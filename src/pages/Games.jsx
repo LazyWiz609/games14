@@ -101,7 +101,7 @@ export default function Games() {
             <GameCard
               gameNumber={1}
               title="Risk Taking and Rewards"
-              imageUrl="./balloon.png"
+              imageUrl="./risk.png"
               fromColor="#60A5FA"
               toColor="#22D3EE"
               link="/games/1"
