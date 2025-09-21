@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
-
-const API_BASE = import.meta.env.VITE_API_BASE;
+import { getApiBase } from '../lib/apiBase.js';
 
 export default function Login() {
   const [name, setName] = useState('');
@@ -22,7 +21,7 @@ export default function Login() {
     }
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/login.php`, {
+      const res = await fetch(`${getApiBase()}/login.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: name.trim(), roll_number: rollNumber.trim() }),

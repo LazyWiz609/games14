@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
-
-const API_BASE = import.meta.env.VITE_API_BASE;
+import { getApiBase } from '../lib/apiBase.js';
 
 export default function Register() {
   const [name, setName] = useState('');
@@ -22,7 +21,7 @@ export default function Register() {
     }
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/register.php`, {
+      const res = await fetch(`${getApiBase()}/register.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: name.trim(), roll_number: rollNumber.trim(), school_name: school.trim() }),

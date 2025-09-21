@@ -11,6 +11,9 @@ import BalloonGame from './pages/Games/1/Balloon.jsx';
 import RewardGame from './pages/Games/1/Reward.jsx';
 import GamblingGame from './pages/Games/1/Gambling.jsx';
 import Register from './pages/Register.jsx';
+import LondonGame from './pages/games/2/london.jsx';
+import MazeGame from './pages/games/2/maze.jsx';
+import PlanGame from './pages/games/2/plan.jsx';
 function App() {
   return (
     <BrowserRouter>
@@ -26,6 +29,9 @@ function App() {
                 <Route path="/games/1/balloon" element={<ProtectedRoute><BalloonGame /></ProtectedRoute>} />
                 <Route path="/games/1/reward" element={<ProtectedRoute><RewardGame /></ProtectedRoute>} />
                 <Route path="/games/1/gambling" element={<ProtectedRoute><GamblingGame /></ProtectedRoute>} />
+                <Route path="/games/2/london" element={<ProtectedRoute><LondonGame /></ProtectedRoute>} />
+                <Route path="/games/2/maze" element={<ProtectedRoute><MazeGame /></ProtectedRoute>} />
+                <Route path="/games/2/plan" element={<ProtectedRoute><PlanGame /></ProtectedRoute>} />
           <Route
             path="/games"
             element={

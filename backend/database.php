@@ -1,7 +1,7 @@
 <?php
 // backend/database.php
 
-function env($key, $default = null) {
+function env_file($key, $default = null) {
   static $loaded = false;
   static $vars = [];
   if (!$loaded) {
@@ -24,11 +24,13 @@ function env($key, $default = null) {
 }
 
 function get_db() {
-  $host = env('DB_HOST', '127.0.0.1');
-  $port = env('DB_PORT', '3306');
-  $name = env('DB_NAME', 'oggames2');
-  $user = env('DB_USER', 'root');
-  $pass = env('DB_PASS', '');
+  // Prefer real environment variables first (e.g., set in Hostinger panel),
+  // then fallback to .env file, then to local defaults.
+  $host = getenv('DB_HOST') ?: env_file('DB_HOST', '127.0.0.1');
+  $port = getenv('DB_PORT') ?: env_file('DB_PORT', '3306');
+  $name = getenv('DB_NAME') ?: env_file('DB_NAME', 'oggames2');
+  $user = getenv('DB_USER') ?: env_file('DB_USER', 'root');
+  $pass = getenv('DB_PASS') ?: env_file('DB_PASS', '');
   $charset = 'utf8mb4';
 
   $dsn = "mysql:host={$host};port={$port};dbname={$name};charset={$charset}";
