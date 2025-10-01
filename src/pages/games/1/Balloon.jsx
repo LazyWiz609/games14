@@ -1,4 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useAuth } from '../../../context/AuthContext.jsx';
+import { getApiBase } from '../../../lib/apiBase.js';
 
 // SVG icon for the balloon
 const BalloonIcon = ({ scale = 1, popped = false }) => (
@@ -45,7 +47,7 @@ const BalloonIcon = ({ scale = 1, popped = false }) => (
 
 
 export default function BalloonGame() {
-  const TOTAL_ROUNDS = 30;
+  const TOTAL_ROUNDS = 8;
   const MAX_PUMPS = 128;
 
   // Game state: 'start', 'playing', 'popped', 'cashed-out', 'end'
@@ -141,12 +143,19 @@ export default function BalloonGame() {
     const calculateBartScore = () => {
       let score = 3; // Start with average
 
+      const roundsPlayed = gameHistory.length;
+      const popRate = roundsPlayed > 0 ? (totalPops / roundsPlayed) : 0;
+      // Calibrate pop-rate thresholds from original 30-round logic:
+      // good if pops < 10/30 (~33%), risky if pops > 15/30 (50%).
+      const GOOD_POP_RATE_MAX = 10 / 30;
+      const RISKY_POP_RATE_MIN = 15 / 30;
+
       // 1. Risk level assessment
-      if (avgPumps > 30 && avgPumps < 65 && totalPops < 10) {
+      if (avgPumps > 30 && avgPumps < 65 && popRate < GOOD_POP_RATE_MAX) {
         score++; // Good risk/reward balance
       } else if (avgPumps < 20) {
         score--; // Too cautious
-      } else if (totalPops > 15) {
+      } else if (popRate > RISKY_POP_RATE_MIN) {
         score--; // Too risky
       }
 
@@ -182,6 +191,31 @@ export default function BalloonGame() {
     };
   }, [gameState, gameHistory]);
 
+  // Save results to backend when game ends
+  const { user } = useAuth();
+  useEffect(() => {
+    if (gameState !== 'end' || !finalResults) return;
+    try {
+      const key = 'game1_session_id';
+      let sessionId = localStorage.getItem(key);
+      if (!sessionId) {
+        sessionId = `g1_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        localStorage.setItem(key, sessionId);
+      }
+      fetch(`${getApiBase()}/save_game1.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: sessionId,
+          player_name: user?.name || 'Guest',
+          roll_number: user?.rollNumber || '',
+          timestamp: new Date().toISOString(),
+          balloon_score: finalResults.bartScore,
+        }),
+      }).catch(() => {});
+    } catch (_) {}
+  }, [gameState, finalResults, user]);
+
   const balloonScale = 1 + (pumps / MAX_PUMPS) * 1.5;
 
   const renderContent = () => {
@@ -191,7 +225,7 @@ export default function BalloonGame() {
           <div className="text-center">
             <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">Balloon Analogue Risk Task (BART)</h1>
             <p className="mt-4 text-white/85 max-w-xl mx-auto">
-              Welcome to the Balloon Game. The goal is to earn as many points as possible over 30 rounds.
+              Welcome to the Balloon Game. The goal is to earn as many points as possible over {TOTAL_ROUNDS} rounds.
               In each round, you can pump a balloon to increase its value. Each pump is worth 1 point.
               However, each pump also increases the risk of the balloon popping. If it pops, you lose all points for that round.
               You can "Cash Out" at any time to secure the points you've earned for the round.

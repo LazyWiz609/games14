@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useAuth } from '../../../context/AuthContext.jsx';
+import { getApiBase } from '../../../lib/apiBase.js';
 import { CircleDot, Square, Triangle, Star, Award, RefreshCw, Play, ArrowRight, CheckCircle, BrainCircuit, Flag, Footprints } from 'lucide-react';
 
 // --- CONFIGURATION & CONSTANTS ---
@@ -140,6 +142,41 @@ export default function MazeGame() {
     totalUserMoves: 0,
     totalOptimalMoves: 0,
   });
+
+  const { user } = useAuth();
+  // Save results to backend when finished
+  useEffect(() => {
+    if (game.status !== 'finished') return;
+    try {
+      const percentage = game.totalOptimalMoves > 0 ? (game.totalUserMoves / game.totalOptimalMoves) * 100 : 100;
+      let finalScore = 1;
+      if (game.ageGroup === '14-15') {
+        if (percentage <= 120) finalScore = 5; else if (percentage <= 140) finalScore = 4;
+        else if (percentage <= 170) finalScore = 3; else if (percentage <= 200) finalScore = 2;
+      } else {
+        if (percentage <= 110) finalScore = 5; else if (percentage <= 125) finalScore = 4;
+        else if (percentage <= 150) finalScore = 3; else if (percentage <= 180) finalScore = 2;
+      }
+
+      const key = 'game2_session_id';
+      let sessionId = localStorage.getItem(key);
+      if (!sessionId) {
+        sessionId = `g2_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        localStorage.setItem(key, sessionId);
+      }
+      fetch(`${getApiBase()}/save_game2.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: sessionId,
+          player_name: user?.name || 'Guest',
+          roll_number: user?.rollNumber || '',
+          timestamp: new Date().toISOString(),
+          maze_score: finalScore,
+        }),
+      }).catch(() => {});
+    } catch (_) {}
+  }, [game.status, game.totalOptimalMoves, game.totalUserMoves, game.ageGroup, user]);
 
   const currentMazeData = useMemo(() => game.mazes[game.mazeIndex] || null, [game.mazes, game.mazeIndex]);
 

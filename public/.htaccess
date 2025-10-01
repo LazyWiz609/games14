@@ -1,0 +1,25 @@
+# SPA fallback for React Router (Vite build)
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  # If your app is deployed under a subdirectory, set it here, e.g. /subapp/
+  RewriteBase /
+
+  # Serve existing files/directories directly
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Otherwise, rewrite all to index.html
+  RewriteRule . /index.html [L]
+</IfModule>
+
+# Optional: Cache static assets aggressively (adjust as needed)
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType text/css "access plus 7 days"
+  ExpiresByType application/javascript "access plus 7 days"
+  ExpiresByType image/webp "access plus 30 days"
+  ExpiresByType image/png "access plus 30 days"
+  ExpiresByType image/jpeg "access plus 30 days"
+  ExpiresDefault "access plus 1 hour"
+</IfModule>

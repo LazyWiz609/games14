@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useAuth } from '../../../context/AuthContext.jsx';
+import { getApiBase } from '../../../lib/apiBase.js';
 import { CircleDot, Square, Triangle, Star, Award, RefreshCw, Play, ArrowRight, CheckCircle, BrainCircuit, Edit3 } from 'lucide-react';
 
 // --- CONFIGURATION & CONSTANTS ---
@@ -70,6 +72,34 @@ export default function PlanGame() {
 
   const currentScenarios = useMemo(() => game.ageGroup ? SCENARIOS[game.ageGroup] : [], [game.ageGroup]);
   const currentScenario = useMemo(() => currentScenarios[game.scenarioIndex] || null, [currentScenarios, game.scenarioIndex]);
+
+  const { user } = useAuth();
+  // Save results to backend when finished
+  useEffect(() => {
+    if (game.status !== 'finished') return;
+    try {
+      const totalScore = game.responses.reduce((sum, res) => sum + (res.score || 0), 0);
+      const avg = game.responses.length ? Math.round(totalScore / game.responses.length) : 0;
+
+      const key = 'game2_session_id';
+      let sessionId = localStorage.getItem(key);
+      if (!sessionId) {
+        sessionId = `g2_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        localStorage.setItem(key, sessionId);
+      }
+      fetch(`${getApiBase()}/save_game2.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: sessionId,
+          player_name: user?.name || 'Guest',
+          roll_number: user?.rollNumber || '',
+          timestamp: new Date().toISOString(),
+          plan_score: avg,
+        }),
+      }).catch(() => {});
+    } catch (_) {}
+  }, [game.status, game.responses, user]);
 
   const setupGame = useCallback((ageGroup) => {
     setGame(g => ({ ...g, status: 'instructions', ageGroup }));
@@ -156,19 +186,18 @@ export default function PlanGame() {
         </div>
       );
       case 'finished':
-        const { averageScore, interpretation } = (() => {
-            const totalScore = game.responses.reduce((sum, res) => sum + res.score, 0);
-            const avg = Math.round(totalScore / game.responses.length);
-            return { averageScore: avg, interpretation: SCORE_INTERPRETATION[avg] };
-        })();
         return (
             <div className="screen-container">
                 <Award size={80} className="text-yellow-300 drop-shadow-lg" />
                 <h1 className="title">Activity Complete!</h1>
-                <p className="subtitle">Here are your results.</p>
-                <div className="mt-6 text-lg space-y-3 bg-black/20 p-6 rounded-lg text-left w-full">
-                    <p>Final Score: <span className="font-bold text-2xl text-green-300">{averageScore} / 5</span></p>
-                    <p>Interpretation: <span className="font-bold text-cyan-300">{interpretation}</span></p>
+                <p className="subtitle">Here is what you entered for each scenario.</p>
+                <div className="mt-6 text-lg space-y-4 bg-black/20 p-6 rounded-lg text-left w-full">
+                  {game.responses.map((res, idx) => (
+                    <div key={idx} className="bg-white/5 rounded-md p-4">
+                      <p className="text-sm text-white/70 mb-2">Scenario {idx + 1}</p>
+                      <p className="whitespace-pre-wrap leading-relaxed">{res.response}</p>
+                    </div>
+                  ))}
                 </div>
                 <button onClick={resetGame} className="btn-primary mt-8"><RefreshCw className="mr-2"/> Play Again</button>
             </div>

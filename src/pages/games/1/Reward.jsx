@@ -1,4 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useAuth } from '../../../context/AuthContext.jsx';
+import { getApiBase } from '../../../lib/apiBase.js';
 
 // Pre-defined set of 50 trials for consistency
 const generateTrials = () => {
@@ -111,6 +113,31 @@ export default function RewardGame() {
         justification
     };
   }, [gameState, history, justification]);
+
+  // Save results to backend when game ends
+  const { user } = useAuth();
+  useEffect(() => {
+    if (gameState !== 'end' || !finalResults) return;
+    try {
+      const key = 'game1_session_id';
+      let sessionId = localStorage.getItem(key);
+      if (!sessionId) {
+        sessionId = `g1_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        localStorage.setItem(key, sessionId);
+      }
+      fetch(`${getApiBase()}/save_game1.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: sessionId,
+          player_name: user?.name || 'Guest',
+          roll_number: user?.rollNumber || '',
+          timestamp: new Date().toISOString(),
+          reward_score: finalResults.score,
+        }),
+      }).catch(() => {});
+    } catch (_) {}
+  }, [gameState, finalResults, user]);
 
 
   const renderContent = () => {

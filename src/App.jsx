@@ -2,18 +2,21 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Home from './pages/Home.jsx';
 import Login from './pages/Login.jsx';
 import Games from './pages/Games.jsx';
-import Game1 from './pages/Games/1.jsx';
+import Game1 from './pages/games/1.jsx';
 import Game2 from './pages/games/2.jsx';
 import Game3 from './pages/games/3.jsx';
 import Game4 from './pages/games/4.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
-import BalloonGame from './pages/Games/1/Balloon.jsx';
-import RewardGame from './pages/Games/1/Reward.jsx';
-import GamblingGame from './pages/Games/1/Gambling.jsx';
+import BalloonGame from './pages/games/1/Balloon.jsx';
+import RewardGame from './pages/games/1/Reward.jsx';
+import GamblingGame from './pages/games/1/Gambling.jsx';
 import Register from './pages/Register.jsx';
 import LondonGame from './pages/games/2/london.jsx';
 import MazeGame from './pages/games/2/maze.jsx';
 import PlanGame from './pages/games/2/plan.jsx';
+import Driving from './pages/games/3/Driving.jsx';
+import Line from './pages/games/3/Line.jsx';
+import Social from './pages/games/3/Social.jsx';
 function App() {
   return (
     <BrowserRouter>
@@ -32,6 +35,9 @@ function App() {
                 <Route path="/games/2/london" element={<ProtectedRoute><LondonGame /></ProtectedRoute>} />
                 <Route path="/games/2/maze" element={<ProtectedRoute><MazeGame /></ProtectedRoute>} />
                 <Route path="/games/2/plan" element={<ProtectedRoute><PlanGame /></ProtectedRoute>} />
+                <Route path="/games/3/driving" element={<ProtectedRoute><Driving /></ProtectedRoute>} />
+                <Route path="/games/3/line" element={<ProtectedRoute><Line /></ProtectedRoute>} />
+                <Route path="/games/3/social" element={<ProtectedRoute><Social /></ProtectedRoute>} />
           <Route
             path="/games"
             element={

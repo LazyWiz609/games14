@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useAuth } from '../../../context/AuthContext.jsx';
+import { getApiBase } from '../../../lib/apiBase.js';
 import { CircleDot, Square, Triangle, Star, Award, RefreshCw, Play, ArrowRight, CheckCircle, XCircle, BrainCircuit } from 'lucide-react';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -133,6 +135,42 @@ function LondonGame() {
     moves: 0, feedback: { message: '', type: '' },
     totalMoves: 0, totalOptimalMoves: 0, planningStartTime: 0, totalPlanningTime: 0,
   });
+
+  const { user } = useAuth();
+  // Save results to backend when finished
+  useEffect(() => {
+    if (game.status !== 'finished') return;
+    try {
+      const extraMoves = game.totalMoves - game.totalOptimalMoves;
+      const percentage = game.totalOptimalMoves > 0 ? (extraMoves / game.totalOptimalMoves) * 100 : 0;
+      let finalScore = 1;
+      if (game.ageGroup === '14-15') {
+        if (percentage <= 15) finalScore = 5; else if (percentage <= 30) finalScore = 4;
+        else if (percentage <= 50) finalScore = 3; else if (percentage <= 75) finalScore = 2;
+      } else {
+        if (percentage <= 10) finalScore = 5; else if (percentage <= 25) finalScore = 4;
+        else if (percentage <= 40) finalScore = 3; else if (percentage <= 60) finalScore = 2;
+      }
+
+      const key = 'game2_session_id';
+      let sessionId = localStorage.getItem(key);
+      if (!sessionId) {
+        sessionId = `g2_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        localStorage.setItem(key, sessionId);
+      }
+      fetch(`${getApiBase()}/save_game2.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: sessionId,
+          player_name: user?.name || 'Guest',
+          roll_number: user?.rollNumber || '',
+          timestamp: new Date().toISOString(),
+          london_score: finalScore,
+        }),
+      }).catch(() => {});
+    } catch (_) {}
+  }, [game.status, game.totalMoves, game.totalOptimalMoves, game.ageGroup, user]);
 
   const currentProblemSet = useMemo(() => game.ageGroup ? PROBLEMS[game.ageGroup] : [], [game.ageGroup]);
   const currentProblem = useMemo(() => currentProblemSet[game.problemIndex] || null, [currentProblemSet, game.problemIndex]);
