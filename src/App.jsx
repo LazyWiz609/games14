@@ -17,7 +17,7 @@ import PlanGame from './pages/games/2/plan.jsx';
 import Driving from './pages/games/3/Driving.jsx';
 import Line from './pages/games/3/Line.jsx';
 import Social from './pages/games/3/Social.jsx';
-import SelfReport from './pages/games/4/Self-Report.jsx';
+import Diary from './pages/games/4/Diary.jsx';
 import Executive from './pages/games/4/Executive.jsx';
 
 function App() {
@@ -41,7 +41,7 @@ function App() {
           <Route path="/games/3/driving" element={<ProtectedRoute><Driving /></ProtectedRoute>} />
           <Route path="/games/3/line" element={<ProtectedRoute><Line /></ProtectedRoute>} />
           <Route path="/games/3/social" element={<ProtectedRoute><Social /></ProtectedRoute>} />
-          <Route path="/games/4/self-report" element={<ProtectedRoute><SelfReport /></ProtectedRoute>} />
+          <Route path="/games/4/diary" element={<ProtectedRoute><Diary /></ProtectedRoute>} />
           <Route path="/games/4/executive" element={<ProtectedRoute><Executive /></ProtectedRoute>} />
           <Route
             path="/games"

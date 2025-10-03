@@ -49,35 +49,142 @@ export default function Driving() {
   // Driving game state
   // Step-based tuning
   const STEP_UNITS = 100; // one "step" equals 100 virtual distance units
-  const TRAFFIC_LIGHT_DISTANCE = 800 + 5 * STEP_UNITS; // 5 steps later
-  // Push speed limit much later (~50 steps beyond 5000 => ~10000)
+  // Global scale to delay checkpoints and extend track; increase to make events appear later
+  const DISTANCE_SCALE = 2.5;
+  // Base distances (pre-scale)
+  // Push speed limit much later (~50 steps beyond 5000)
   const SPEED_LIMIT_DELAY_STEPS = 50; 
-  const SPEED_LIMIT_DISTANCE = 5000 + SPEED_LIMIT_DELAY_STEPS * STEP_UNITS; // ~8200
-  // Pedestrian appears 15 steps before speed limit, but never earlier than traffic light + 200
-  const PEDESTRIAN_DISTANCE = Math.max(TRAFFIC_LIGHT_DISTANCE + 200, SPEED_LIMIT_DISTANCE - 15 * STEP_UNITS);
+  const BASE_SPEED_LIMIT_DISTANCE = 5000 + (200 + SPEED_LIMIT_DELAY_STEPS) * STEP_UNITS;
+  // Place traffic light at ~99.5% of the speed limit distance (appears just before speed limit)
+  const BASE_TRAFFIC_LIGHT_DISTANCE = Math.max(2000, Math.floor((BASE_SPEED_LIMIT_DISTANCE - 6500) * 0.25));
+  const BASE_PEDESTRIAN_DISTANCE = Math.max(BASE_TRAFFIC_LIGHT_DISTANCE + 2000, BASE_SPEED_LIMIT_DISTANCE - 102 * STEP_UNITS);
   const END_OFFSET_STEPS = 30; // end decision appears 30 steps after speed limit
-  const END_DECISION_DISTANCE = SPEED_LIMIT_DISTANCE + END_OFFSET_STEPS * STEP_UNITS;
-  const trackLength = END_DECISION_DISTANCE + 200; // allow a bit of driving after decision to reach true end
-  const speedPerSecond = 320; // units per second while driving
+  const BASE_END_DECISION_DISTANCE = (BASE_SPEED_LIMIT_DISTANCE - 100) + END_OFFSET_STEPS * STEP_UNITS;
+
+  // Apply scale
+  const TRAFFIC_LIGHT_DISTANCE = BASE_TRAFFIC_LIGHT_DISTANCE * DISTANCE_SCALE;
+  const SPEED_LIMIT_DISTANCE = BASE_SPEED_LIMIT_DISTANCE * DISTANCE_SCALE;
+  const PEDESTRIAN_DISTANCE = BASE_PEDESTRIAN_DISTANCE * DISTANCE_SCALE;
+  const END_DECISION_DISTANCE = BASE_END_DECISION_DISTANCE * DISTANCE_SCALE;
+  const trackLength = END_DECISION_DISTANCE + 200 * DISTANCE_SCALE; // allow a bit of driving after decision
+  const speedPerSecond = 4500; // units per second while driving (slightly increased)
   const [distance, setDistance] = useState(0); // 0..trackLength
+  const distanceRef = useRef(0);
   const [driveHeld, setDriveHeld] = useState(false); // true while Space/ArrowUp is held
   const isMoving = driveHeld && distance < trackLength; // derived
   const [showModal, setShowModal] = useState(false);
-  const [modal, setModal] = useState({ title: '', options: ["Option A", "Option B"] });
+  const [modal, setModal] = useState({ 
+    title: '', 
+    options: ["Option A", "Option B"],
+    selected: null
+  });
   const [obstacleIndex, setObstacleIndex] = useState(0);
   const lastTsRef = useRef(0);
   const rafRef = useRef(0);
-
-  // Define obstacle checkpoints along the road (absolute distances)
+  
+  // Define obstacle checkpoints along the road (absolute distances) first
   const checkpoints = useMemo(() => (
     [
       { title: 'Traffic Light', options: ["Stop", "Go"], distance: TRAFFIC_LIGHT_DISTANCE },
       { title: 'Pedestrian Crossing', options: ["Yield", "Proceed"], distance: PEDESTRIAN_DISTANCE },
       { title: 'Speed Limit Ahead', options: ["Slow Down", "Maintain Speed"], distance: SPEED_LIMIT_DISTANCE },
-      // Final decision appears 20 steps after speed limit; player then drives to the very end
       { title: 'End of Road', options: ["Take Shortcut", "Go Straight"], distance: END_DECISION_DISTANCE },
     ]
   ), [TRAFFIC_LIGHT_DISTANCE, PEDESTRIAN_DISTANCE, SPEED_LIMIT_DISTANCE, END_DECISION_DISTANCE]);
+
+  // Track game state
+  const [gameState, setGameState] = useState({
+    firstPlay: true,
+    showOthersChoices: false,
+    showTryAgain: false,
+    showResults: false,
+    playCount: 0,
+    choices: []
+  });
+  // Track user's choices
+  const [userChoices, setUserChoices] = useState([]);
+  
+  // Handle completing the game
+  const handleGameComplete = useCallback(() => {
+    setGameState(prev => {
+      const newPlayCount = prev.playCount + 1;
+      
+      if (newPlayCount === 1) {
+        // First playthrough - show others' choices and ask to try again
+        return {
+          ...prev,
+          showOthersChoices: true,
+          showTryAgain: true,
+          playCount: newPlayCount,
+          firstPlay: true
+        };
+      } else {
+        // Second playthrough or declined to play again - show results
+        return {
+          ...prev,
+          showResults: true,
+          playCount: newPlayCount,
+          firstPlay: false
+        };
+      }
+    });
+  }, []);
+  
+  // Handle choice selection
+  const handleChoice = useCallback((choice) => {
+    const currentCheckpoint = checkpoints[obstacleIndex];
+    const newChoices = [...userChoices, {
+      checkpoint: currentCheckpoint.title,
+      choice: choice
+    }];
+    
+    setUserChoices(newChoices);
+    setModal(prev => ({ ...prev, selected: choice }));
+    
+    // Close modal after a short delay
+    setTimeout(() => {
+      setShowModal(false);
+      setObstacleIndex(i => {
+        const newIndex = Math.min(i + 1, checkpoints.length);
+        
+        // If this was the last checkpoint, show completion
+        if (newIndex === checkpoints.length) {
+          setTimeout(handleGameComplete, 1000);
+        }
+        
+        return newIndex;
+      });
+      lastTsRef.current = 0;
+    }, 500);
+  }, [obstacleIndex, userChoices, checkpoints, handleGameComplete]);
+  
+  // Handle try again
+  const handleTryAgain = useCallback((playAgain) => {
+    if (playAgain) {
+      // Reset for second playthrough
+      setUserChoices([]);
+      setObstacleIndex(0);
+      setDistance(0);
+      distanceRef.current = 0;
+      setGameState(prev => ({
+        ...prev,
+        showOthersChoices: false,
+        showTryAgain: false,
+        firstPlay: false,
+        showResults: false
+      }));
+    } else {
+      // Show results without playing again
+      setGameState(prev => ({
+        ...prev,
+        showOthersChoices: false,
+        showTryAgain: false,
+        showResults: true,
+        firstPlay: false
+      }));
+    }
+  }, []);
+
   const obstacleTitles = [
     'Traffic Light',
     'Speed Limit Ahead',
@@ -86,22 +193,44 @@ export default function Driving() {
   ];
   const obstacleOptions = checkpoints.map(c => c.options);
 
+  // Keep ref in sync with state
+  useEffect(() => {
+    distanceRef.current = distance;
+  }, [distance]);
+
   // Movement loop (forward only while key held)
   useEffect(() => {
-    function tick(ts) {
-      if (!driveHeld || showModal || distance >= trackLength) return;
-      if (!lastTsRef.current) lastTsRef.current = ts;
-      const dt = Math.min(0.05, (ts - lastTsRef.current) / 1000);
-      lastTsRef.current = ts;
+    if (!driveHeld || showModal) return;
 
-      setDistance(prev => Math.min(trackLength, prev + speedPerSecond * dt));
-      rafRef.current = requestAnimationFrame(tick);
-    }
-    if (driveHeld && !showModal && distance < trackLength) {
-      rafRef.current = requestAnimationFrame(tick);
-    }
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [driveHeld, showModal, distance, trackLength]);
+    let animationId;
+    let lastTime = performance.now();
+    const baseSpeed = 3; // Increased base speed for faster movement
+
+    const moveCar = (currentTime) => {
+      if (!driveHeld || showModal || distanceRef.current >= trackLength) {
+        cancelAnimationFrame(animationId);
+        return;
+      }
+
+      const deltaTime = currentTime - lastTime;
+      lastTime = currentTime;
+
+      const distanceToMove = baseSpeed * deltaTime;
+      distanceRef.current = Math.min(distanceRef.current + distanceToMove, trackLength);
+
+      // Update state less frequently, or use a direct DOM manipulation for background if performance is still an issue.
+      // For now, let's update the state, but ensure the background position reads from distanceRef.current
+      setDistance(distanceRef.current); 
+      
+      animationId = requestAnimationFrame(moveCar);
+    };
+
+    animationId = requestAnimationFrame(moveCar);
+
+    return () => {
+      cancelAnimationFrame(animationId);
+    };
+  }, [driveHeld, showModal, trackLength]);
 
   // Trigger modals at checkpoints in order
   useEffect(() => {
@@ -109,39 +238,93 @@ export default function Driving() {
     const nextCp = checkpoints[obstacleIndex];
     if (distance >= nextCp.distance && !showModal) {
       setShowModal(true);
-      setModal({ title: nextCp.title, options: nextCp.options });
+      setModal({ 
+        title: nextCp.title, 
+        options: nextCp.options,
+        selected: null
+      });
     }
   }, [distance, obstacleIndex, checkpoints, showModal]);
 
-  const chooseOption = useCallback(() => {
-    setShowModal(false);
-    setObstacleIndex(i => Math.min(i + 1, checkpoints.length));
-    lastTsRef.current = 0;
-    // resume only when user holds the key again
-  }, [checkpoints.length]);
+  const chooseOption = useCallback((option) => {
+    // Record the choice
+    const currentCheckpoint = checkpoints[obstacleIndex];
+    const newChoices = [...userChoices, {
+      checkpoint: currentCheckpoint.title,
+      choice: option
+    }];
+    setUserChoices(newChoices);
+    
+    // Update modal to show selected option
+    setModal(prev => ({ ...prev, selected: option }));
+    
+    // Close modal after a short delay
+    setTimeout(() => {
+      setShowModal(false);
+      setObstacleIndex(i => Math.min(i + 1, checkpoints.length));
+      lastTsRef.current = 0;
+      
+      // Check if this was the last checkpoint
+      if (obstacleIndex === checkpoints.length - 1) {
+        // Wait a moment before showing completion
+        setTimeout(() => {
+          handleGameComplete();
+        }, 1000);
+      }
+    }, 500);
+  }, [obstacleIndex, checkpoints, userChoices]);
 
-  // Keyboard control: hold Space or ArrowUp to drive
+  // Track key states
+  const keys = useRef({
+    ArrowUp: false,
+    Space: false,
+    KeyW: false
+  });
+
+  // Keyboard control: hold Space, ArrowUp, or W to drive
   useEffect(() => {
-    const onDown = (e) => {
-      if (e.code === 'Space' || e.code === 'ArrowUp') {
+    const handleKeyDown = (e) => {
+      if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
         e.preventDefault();
-        if (!showModal && distance < trackLength) setDriveHeld(true);
+        if (!keys.current[e.code]) {
+          keys.current[e.code] = true;
+          if (!showModal && distanceRef.current < trackLength) {
+            setDriveHeld(true);
+          }
+        }
       }
     };
-    const onUp = (e) => {
-      if (e.code === 'Space' || e.code === 'ArrowUp') {
+
+    const handleKeyUp = (e) => {
+      if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
         e.preventDefault();
-        setDriveHeld(false);
-        lastTsRef.current = 0;
+        keys.current[e.code] = false;
+        
+        // Only stop if no movement keys are still pressed
+        if (!Object.values(keys.current).some(v => v)) {
+          setDriveHeld(false);
+        }
       }
     };
-    window.addEventListener('keydown', onDown);
-    window.addEventListener('keyup', onUp);
+
+    const handleBlur = () => {
+      // Reset all keys if window loses focus
+      Object.keys(keys.current).forEach(key => {
+        keys.current[key] = false;
+      });
+      setDriveHeld(false);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', handleBlur);
+
     return () => {
-      window.removeEventListener('keydown', onDown);
-      window.removeEventListener('keyup', onUp);
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', handleBlur);
     };
-  }, [showModal, distance, trackLength]);
+  }, [showModal, trackLength]);
   const { emoji, bg } = useMemo(() => {
     const seed = user?.id ?? Math.random();
     return {
@@ -206,9 +389,10 @@ export default function Driving() {
               backgroundImage: `url(${city})`,
               backgroundRepeat: 'no-repeat',
               backgroundSize: '100% auto',
-              backgroundPosition: `center ${Math.round((1 - (distance / trackLength)) * 100)}%`,
-              transition: 'background-position 80ms linear',
-              filter: 'saturate(1.05) contrast(1.05)'
+              backgroundPosition: `center ${((1 - (distance / trackLength)) * 100).toFixed(3)}%`,
+              // rely on RAF for smoothness at constant speed
+              filter: 'saturate(1.05) contrast(1.05)',
+              willChange: 'background-position'
             }}
           />
           {/* Center road car sprite (forward only) */}
@@ -251,19 +435,127 @@ export default function Driving() {
               <div className="bg-white rounded-xl p-6 w-80 max-w-[90%] text-gray-900 shadow-xl">
                 <h3 className="font-bold text-lg mb-3 text-center">{modal.title}</h3>
                 <div className="flex flex-col gap-2">
-                  <button onClick={chooseOption} className="px-4 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 transition">{modal.options[0]}</button>
-                  <button onClick={chooseOption} className="px-4 py-2 rounded-md bg-slate-700 text-white hover:bg-slate-800 transition">{modal.options[1]}</button>
+                  <button 
+                    onClick={() => chooseOption(modal.options[0])}
+                    className={`px-4 py-2 rounded-md transition ${
+                      modal.selected === modal.options[0] 
+                        ? 'bg-green-600 text-white' 
+                        : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                    }`}
+                  >
+                    {modal.options[0]}
+                    {modal.selected === modal.options[0] && ' ✓'}
+                  </button>
+                  <button 
+                    onClick={() => chooseOption(modal.options[1])}
+                    className={`px-4 py-2 rounded-md transition ${
+                      modal.selected === modal.options[1] 
+                        ? 'bg-green-600 text-white' 
+                        : 'bg-slate-700 text-white hover:bg-slate-800'
+                    }`}
+                  >
+                    {modal.options[1]}
+                    {modal.selected === modal.options[1] && ' ✓'}
+                  </button>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Finished overlay */}
-          {distance >= trackLength && !showModal && (
-            <div className="absolute inset-0 grid place-items-center bg-black/40 text-white">
-              <div className="text-center">
-                <p className="text-xl font-semibold">Drive complete</p>
-                <p className="text-white/80 mt-1">Thanks for playing</p>
+          
+          {/* Game Complete - First Playthrough */}
+          {distance >= trackLength && gameState.firstPlay && !showModal && (
+            <div className="absolute inset-0 grid place-items-center bg-black/70 text-white p-4 z-50">
+              <div className="text-center max-w-md">
+                <p className="text-2xl font-bold mb-4">Congratulations! 🎉</p>
+                <p className="text-xl mb-6">You've cleared the track!</p>
+                <p className="text-lg mb-8">Here's what others chose...</p>
+                
+                <div className="bg-gray-800 p-4 rounded-lg mb-8 text-left">
+                  <div className="text-yellow-400 mb-2">Alex's choices:</div>
+                  <ul className="text-sm text-gray-300 space-y-1 mb-4">
+                    <li>• Traffic Light: Stop</li>
+                    <li>• Pedestrian Crossing: Yield</li>
+                    <li>• Speed Limit: Slow Down</li>
+                    <li>• End of Road: Take Shortcut</li>
+                  </ul>
+                  
+                  <div className="text-center my-4 p-4 bg-black/30 rounded">
+                    <div className="text-gray-400 text-sm">[Video placeholder showing Alex's gameplay]</div>
+                  </div>
+                </div>
+                
+                <p className="text-lg mb-6">Would you like to try again with this new knowledge?</p>
+                
+                <div className="flex flex-col gap-3">
+                  <button
+                    onClick={() => handleTryAgain(true)}
+                    className="px-6 py-3 bg-green-600 hover:bg-green-700 rounded-lg font-medium transition-colors"
+                  >
+                    Yes, Let's Play Again
+                  </button>
+                  <button
+                    onClick={() => handleTryAgain(false)}
+                    className="px-6 py-3 bg-gray-600 hover:bg-gray-700 rounded-lg font-medium transition-colors"
+                  >
+                    No, Show My Results
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Game Complete - Second Playthrough or Declined to Play Again */}
+          {gameState.showResults && (
+            <div className="absolute inset-0 grid place-items-center bg-black/70 text-white p-4 z-50">
+              <div className="text-center max-w-md w-full">
+                <h2 className="text-2xl font-bold mb-6">Thanks for Playing! 🏁</h2>
+                <h3 className="text-xl font-semibold mb-4">Your Choices:</h3>
+                
+                <div className="bg-gray-800 p-6 rounded-lg mb-8 text-left">
+                  {userChoices.length > 0 ? (
+                    <ul className="space-y-3">
+                      {userChoices.map((choice, index) => (
+                        <li key={index} className="border-b border-gray-700 pb-2">
+                          <div className="font-medium">{choice.checkpoint}:</div>
+                          <div className="text-green-400">{choice.choice}</div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-gray-400">No choices were recorded.</p>
+                  )}
+                </div>
+                
+                <div className="flex flex-col gap-3">
+                  <Link
+                    to="/"
+                    className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 rounded-lg font-medium transition-colors text-center"
+                  >
+                    Return to Main Menu
+                  </Link>
+                  
+                  <button
+                    onClick={() => {
+                      // Reset everything for a fresh start
+                      setObstacleIndex(0);
+                      setDistance(0);
+                      distanceRef.current = 0;
+                      setUserChoices([]);
+                      setGameState({
+                        firstPlay: true,
+                        showOthersChoices: false,
+                        showTryAgain: false,
+                        showResults: false,
+                        playCount: 0,
+                        choices: []
+                      });
+                    }}
+                    className="px-6 py-3 bg-gray-600 hover:bg-gray-700 rounded-lg font-medium transition-colors"
+                  >
+                    Play Again from Start
+                  </button>
+                </div>
               </div>
             </div>
           )}

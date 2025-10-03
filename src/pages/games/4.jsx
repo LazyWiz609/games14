@@ -91,7 +91,7 @@ export default function Game4() {
                 </div>
                 <p className="text-white font-bold text-2xl mt-[16px]">Executive Function Self-Report Scale</p>
                 <div className="mt-auto pt-6">
-                  <Link to="/games/4/self-report" className="w-16 h-16 rounded-full border-4 text-white hover:text-[#474747] border-white flex items-center justify-center shadow-md hover:bg-white hover:scale-105 transition-all duration-300">
+                  <Link to="/games/4/executive" className="w-16 h-16 rounded-full border-4 text-white hover:text-[#474747] border-white flex items-center justify-center shadow-md hover:bg-white hover:scale-105 transition-all duration-300">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" className="w-6 h-6 transition-colors duration-300">
                       <path d="M8 5v14l11-7z" />
                     </svg>
@@ -107,7 +107,7 @@ export default function Game4() {
                 </div>
                 <p className="text-white font-bold text-2xl mt-[16px]">Brief Executive Diary</p>
                 <div className="mt-auto pt-6">
-                  <Link to="/games/4/executive" className="w-16 h-16 rounded-full border-4 text-white hover:text-[#474747] border-white flex items-center justify-center shadow-md hover:bg-white hover:scale-105 transition-all duration-300">
+                  <Link to="/games/4/diary" className="w-16 h-16 rounded-full border-4 text-white hover:text-[#474747] border-white flex items-center justify-center shadow-md hover:bg-white hover:scale-105 transition-all duration-300">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" className="w-6 h-6 transition-colors duration-300">
                       <path d="M8 5v14l11-7z" />
                     </svg>
