@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-import { useAuth } from "../../context/AuthContext.jsx";
+import { useAuth } from "../../../context/AuthContext.jsx";
 import { LogOut, CircleDot, Square, Triangle, Star } from "lucide-react"; // shapes
 import london from '../../assets/london.png';
 import maze from '../../assets/maze.png';

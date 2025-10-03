@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useAuth } from '../../../context/AuthContext.jsx';
-import { getApiBase } from '../../../lib/apiBase.js';
+import { useAuth } from '../../../../context/AuthContext.jsx';
+import { getApiBase } from '../../../../lib/apiBase.js';
 import { CircleDot, Square, Triangle, Star, Award, RefreshCw, Play, ArrowRight, CheckCircle, BrainCircuit, Edit3 } from 'lucide-react';
 
 // --- CONFIGURATION & CONSTANTS ---

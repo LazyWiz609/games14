@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext.jsx";
+import { useAuth } from "../../../context/AuthContext.jsx";
 import { LogOut, CircleDot, Square, Triangle, Star } from "lucide-react";
 import race from '../../assets/race.png';
 import social from '../../assets/social_decision.png';

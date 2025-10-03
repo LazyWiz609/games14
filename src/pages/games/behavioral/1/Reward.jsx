@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useAuth } from '../../../context/AuthContext.jsx';
-import { getApiBase } from '../../../lib/apiBase.js';
+import { useAuth } from '../../../../context/AuthContext.jsx';
+import { getApiBase } from '../../../../lib/apiBase.js';
 
 // Pre-defined set of 50 trials for consistency
 const generateTrials = () => {

@@ -1,6 +1,6 @@
 import { useMemo, useState} from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../../../context/AuthContext.jsx";
+import { useAuth } from "../../../../context/AuthContext.jsx";
 import { LogOut, CircleDot, Square, Triangle, Star } from "lucide-react";
 
 const EMOJIS = [
